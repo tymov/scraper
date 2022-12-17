@@ -5,7 +5,10 @@ using System.Globalization;
 using CsvHelper;
 using System.Linq;
 using System.Text;
-
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.Internal;
 
 namespace WebScraping
 {
@@ -26,7 +29,7 @@ namespace WebScraping
             Console.WriteLine("Choose an option:");
             Console.WriteLine("1) Youtube Search");
             Console.WriteLine("2) Jobsite");
-            Console.WriteLine("3) Price Finder");
+            Console.WriteLine("3) NBA Data");
             Console.WriteLine("4) Exit");
             Console.Write("\r\nSelect an option: ");
 
@@ -43,10 +46,11 @@ namespace WebScraping
                     JobSite(jobsearch);
                     return true;
                 case "3":
-                    Console.WriteLine("Enter a productname (EAN's will be most accurate): ");
-                    var EAN = Console.ReadLine();
-                    PriceBol(EAN);
-                    PriceCB(EAN);
+                    Console.WriteLine("Enter a player's first name: ");
+                    var name = Console.ReadLine();
+                    Console.WriteLine("Enter a player's surname: ");
+                    var surname = Console.ReadLine();
+                    Basketball(name, surname);
                     return true;
                 case "4":
                     return false;
@@ -56,140 +60,243 @@ namespace WebScraping
         }
 
 
-
         static void Youtube(string searchTerm)
         {
             IWebDriver driver = new ChromeDriver();
+            int count = 0;
 
-            List<Dictionary<string, string>> myList = new List<Dictionary<string, string>>();
-
-            driver.Navigate().GoToUrl("https://www.youtube.com/results?search_query=" + searchTerm);
+            driver.Navigate().GoToUrl("https://www.youtube.com/results?search_query=" + searchTerm + "&sp=CAI%253D");
 
             var cookies = driver.FindElement(By.XPath("//*[@id=\"content\"]/div[2]/div[6]/div[1]/ytd-button-renderer[1]/yt-button-shape/button/yt-touch-feedback-shape/div/div[2]"));
             cookies.Click();
 
-            IWebElement title = driver.FindElement(By.XPath("//*[@id=\"video-title\"]/yt-formatted-string"));
-            IWebElement uploader = driver.FindElement(By.Id("//*[@id=\"metadata-line\"]/span[1]"));
-            IWebElement metadata = driver.FindElement(By.Id("//*[@id=\"text\"]/a"));
+            var titles = driver.FindElements(By.XPath("//*[@id=\"video-title\"]/yt-formatted-string"));
+            var views = driver.FindElements(By.XPath("//*[@id=\"metadata-line\"]/span[1]"));
+            var releases = driver.FindElements(By.XPath("//*[@id=\"metadata-line\"]/span[2]"));
+            var uploaders = driver.FindElements(By.XPath("//*[@id=\"channel-info\"]"));
+            var links = driver.FindElements(By.XPath("//*[@id=\"video-title\"]"));
 
-            for (int i = 0; i < 5; i++)
+            while (count < 5)
             {
-                myList[i].Add("title", title.Text);
-                myList[i].Add("author", uploader.Text);
-                myList[i].Add("metadata", metadata.Text);
-
-
-                Console.WriteLine("title: " + myList[i]["title"]);
-                Console.WriteLine("title: " + myList[i]["author"]);
-                Console.WriteLine("title: " + myList[i]["metadata"]);
-                i += 1;
+                Console.WriteLine("");
+                string title = titles[count].Text;
+                string view = views[count].Text;
+                string release = releases[count].Text;
+                string uploader = uploaders[count].Text;
+                string link = links[count].GetAttribute("href");
+                Console.WriteLine("Title: " + title);
+                Console.WriteLine("Views: " + view);
+                Console.WriteLine("Released: " + release);
+                Console.WriteLine("Uploaded by: " + uploader);
+                Console.WriteLine("Link: " + link);
+                count++;
             }
+
+
+            Console.ReadLine();
             driver.Quit();
         }
 
-        static void JobSite(string jobname)
+        public static void addRecord(string value1, string value2, string value3, string value4, string value5, string filepath)
+        {
+            try
+            {
+                using (System.IO.StreamWriter file = new System.IO.StreamWriter(@filepath, true))
+                {
+                    file.WriteLine(value1 + ";" + value2 + ";" + value3 + ";" + value4 + ";" + value5);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("It didn't write: ", ex);
+            }
+
+        }
+
+        public static void JobSite(string jobname)
         {
             // Open Site
             IWebDriver driver = new ChromeDriver();
+            int count = 1;
+            List<Dictionary<string, string>> dataList = new List<Dictionary<string, string>>();
 
             driver.Navigate().GoToUrl("https://www.ictjob.be/");
 
-            // Enter search
             WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
             var elementsWithSearchID = wait.Until((driver) => driver.FindElements(By.Id("keywords-input")));
             var search = elementsWithSearchID.Where(e => e.TagName == "input").FirstOrDefault();
 
             search.SendKeys(jobname);
 
-            Thread.Sleep(3);
             var searchBut = driver.FindElement(By.XPath("//*[@id=\"main-search-button\"]"));
             searchBut.Submit();
 
-            Thread.Sleep(10); 
+            Thread.Sleep(30000);
 
-            var title = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[1]/span[2]/a/h2"));
-            var company = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[1]/span[2]/span[1]"));
-            var location = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[1]/span[2]/span[2]/span[2]"));
-            var keywords = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[1]/span[2]/span[3]"));
-            var link = driver.FindElements(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[1]/span[2]/a"));
+            var date = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[1]/div[2]/div/div[2]/span[2]/a"));
+            date.Click();
 
-            var result = "Title: " + title.ToString() + "\nUploaded By: " + company.ToString() + "\nLocation: " + location.ToString() + "\nKeywords: " + keywords.ToString() + "\nLink: " + link.ToString();
 
-            var data = new[]
+            Thread.Sleep(20000);
+
+            while (count < 7)
             {
-                title.ToString()
-                , company.ToString()
-                , location.ToString()
-                , keywords.ToString()
-                , link.ToString()
-            };
+                if (count == 4)
+                {
+                    count += 1;
+                }
+                Console.WriteLine("");
+                string title = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[" + count + "]/span[2]/a/h2")).Text;
+                string company = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[" + count + "]/span[2]/span[1]")).Text;
+                string location = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[" + count + "]/span[2]/span[2]/span[2]/span/span")).Text;
+                string keyword = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[" + count + "]/span[2]/span[3]")).Text;
+                string link = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[2]/div[1]/div/ul/li[" + count + "]/span[2]/a")).GetAttribute("href");
 
-            using (var writer = new StreamWriter("fileJobs.csv"))
-            using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-            {
-                csv.WriteRecords(data);
+                Console.WriteLine("Title: " + title);
+                Console.WriteLine("Company: " + company);
+                Console.WriteLine("Located in: " + location);
+                Console.WriteLine("Keywords: " + keyword);
+                Console.WriteLine("Link: " + link);
+
+                addRecord(title, company, keyword, location, link, "jobs.csv");
+                count++;
             }
 
-            driver.Quit();    
-        }
-
-
-        static void PriceBol(string EAN)
-        {
-            IWebDriver driver = new ChromeDriver();
-
-            List<string> priceList = new List<string>();
-
-            driver.Navigate().GoToUrl("https://www.bol.com/nl/nl/");
-
-            var cookies = driver.FindElement(By.XPath("//*[@id=\"js-reject-all-button\"]"));
-            cookies.Click();
-
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            var elementsWithSearchID = wait.Until((driver) => driver.FindElements(By.XPath("//*[@id=\"searchfor\"]")));
-            var search = elementsWithSearchID.Where(e => e.TagName == "input").FirstOrDefault();
-
-            search.SendKeys(EAN);
-
-
-            var searchBut = driver.FindElement(By.XPath("//*[@id=\"siteSearch\"]/wsp-search-box-register/wsp-search-input/button"));
-            searchBut.Submit();
-
-            var price = driver.FindElement(By.XPath("//*[@id=\"js_items_content\"]/li/div[2]/wsp-buy-block/div[1]/section/div/div/meta"));
-            priceList.Add(price.Text);
-            
-            Thread.Sleep(500);
+            Console.ReadLine();
             driver.Quit();
         }
 
-        static void PriceCB(string EAN)
+        public static void addRecords(string value1, string value2, string value3, string value4, string value5, string value6, string value7, string filepath)
         {
-            IWebDriver driver = new ChromeDriver();
+            try
+            {
+                using (System.IO.StreamWriter file = new System.IO.StreamWriter(@filepath, true))
+                {
+                    file.WriteLine("Name" + ";"  + value1);
+                    file.WriteLine("Season"+ ";" + "PPG" + ";" + "RPG" + ";" + "APG");
+                    file.WriteLine("Current Season" + ";" + value2 + ";" + value3 + ";" + value4);
+                    file.WriteLine("Carreer" + ";" + value5 + ";" + value6 + ";" + value7);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("It didn't write: ", ex);
+            }
 
-            List<string> priceList = new List<string>();
+        }
 
-            driver.Navigate().GoToUrl("https://www.coolblue.be/nl");
+        public static void addHtml(string value1, string value2, string value3, string value4, string value5, string value6, string value7, string filepath, string value8, string value9)
+        {
+            try
+            {
+                using (System.IO.StreamWriter ofile = new System.IO.StreamWriter(@filepath, true))
+                {
+                    ofile.WriteLine("<html>");
+                    ofile.WriteLine("<body style='background-color: #D3D3D3'>");
 
-            var cookies = driver.FindElement(By.XPath("/html/body/div[1]/div[1]/div[2]/div/div[1]/div/div[1]/form/div[2]/button"));
+                    ofile.WriteLine("<h2>" + "Player Information" + "</h2>");
+                    ofile.WriteLine("<p>" + "Name: " + value1 + "</p>");
+                    ofile.WriteLine("<p>" + "Born on: " + value8 + "</p>");
+                    ofile.WriteLine("<p>" + "Team: " + value9 + "</p>");
+
+                    ofile.WriteLine("<h2>" + "Player Statistics" + "</h2>");
+                    ofile.WriteLine("<table style='width:75%; border-collapse: collapse; text-align: center;'>");
+                    ofile.WriteLine("<tr>");
+                    ofile.WriteLine("<th>" + "Season" + "</th>");
+                    ofile.WriteLine("<th>" + "Points" + "</th>");
+                    ofile.WriteLine("<th>" + "Rebounds" + "</th>");
+                    ofile.WriteLine("<th>" + "Assists" + "</th>");
+                    ofile.WriteLine("</tr>");
+
+                    ofile.WriteLine("<tr>");
+                    ofile.WriteLine("<td>" + "Current Season" + "</td>");
+                    ofile.WriteLine("<td>" + value2 + "</td>");
+                    ofile.WriteLine("<td>" + value3 + "</td>");
+                    ofile.WriteLine("<td>" + value4 + "</td>");
+                    ofile.WriteLine("</tr>");
+
+                    ofile.WriteLine("<tr>");
+                    ofile.WriteLine("<td>" + "Carreer" + "</td>");
+                    ofile.WriteLine("<td>" + value5 + "</td>");
+                    ofile.WriteLine("<td>" + value6 + "</td>");
+                    ofile.WriteLine("<td>" + value7 + "</td>");
+                    ofile.WriteLine("</tr>");
+
+                    ofile.WriteLine("</table>");
+                    ofile.WriteLine("</body>");
+                    ofile.WriteLine("</html>");
+                    ofile.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("It didn't write: ", ex);
+            }        
+        }
+
+
+        static void Basketball(string name, string surname)
+        {
+            IWebDriver driver = new FirefoxDriver();
+            int count = 0;
+            driver.Manage().Window.Maximize();
+
+            List<string> dataList = new List<string>();
+
+            string firstLet = surname.Substring(0, 1);
+            string lastFirst = "";
+            if (surname.Length >= 5)
+            {
+                 lastFirst = surname.Substring(0, 5) + name.Substring(0, 2);
+            }
+            else
+            {
+                lastFirst = surname.Substring(0, 4) + name.Substring(0, 2);
+            }
+           
+
+            driver.Navigate().GoToUrl("https://www.basketball-reference.com/players/"+ firstLet.ToLower() +"/" + lastFirst.ToLower() + "01.html");
+
+            Thread.Sleep(3000);
+
+            var cookies = driver.FindElement(By.XPath("//*[@id=\"qc-cmp2-ui\"]/div[2]/div/button[3]"));
             cookies.Click();
 
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            var elementsWithSearchID = wait.Until((driver) => driver.FindElements(By.XPath("//*[@id=\"search_query\"]")));
-            var search = elementsWithSearchID.Where(e => e.TagName == "input").FirstOrDefault();
+            var details = driver.FindElement(By.XPath("//*[@id=\"meta_more_button\"]"));
+            details.Click();
 
-            search.SendKeys(EAN);
+            var playerName = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[1]/div[2]/h1/span")).Text;
+            var dateOfBirth = driver.FindElement(By.XPath("//*[@id=\"necro-birth\"]")).Text;
+            var teams = driver.FindElement(By.XPath("//*[@id=\"per_game.2023\"]")).Text;
+            var currentStat = teams.Substring(0, 7) + " " + teams.Substring(11, 11);
+            string team = currentStat.Substring(8, 7);
 
+            Console.WriteLine("");
+            Console.WriteLine("Player Details");
+            Console.WriteLine("Name: " + playerName);
+            Console.WriteLine("Born on: " + dateOfBirth);
+            Console.WriteLine("Team: " + currentStat);
 
-            var searchBut = driver.FindElement(By.XPath("//*[@id=\"js-search-container\"]/div[1]/form/div/div[1]/button[2]"));
-            searchBut.Submit();
+            var currentSeason = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[1]/div/p[1]/strong")).Text;
+            var games = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[1]/p[1]")).Text;
+            var ppg = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[2]/p[1]")).Text;
+            var trb = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[3]/p[1]")).Text;
+            var apg = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[4]/p[1]")).Text;
 
-            var price = driver.FindElement(By.CssSelector("#product-results > div.grid.gap--6\\@md.product-grid__products > div:nth-child(1) > div > div > div.product-card__details.product-card__custom-breakpoint.js-product-details.col--8.col--12\\@md > div.section--3.flex.justify-content--between > div.mr--2.grow--1 > span"));
-            priceList.Add(price.Text);
+            var cgames = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[1]/p[2]")).Text; 
+            var cppg = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[2]/p[2]")).Text; 
+            var ctrb = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[3]/p[2]")).Text; 
+            var capg = driver.FindElement(By.XPath("/html/body/div[3]/div[3]/div[4]/div[2]/div[4]/p[2]")).Text;
 
+            Console.WriteLine("\nPlayer Statistics");
+            Console.WriteLine("\nCurrent Season: \t" + currentSeason + "\nGames Played: \t\t" + games + "\nPoints Per Game: \t" + ppg + "\nRebounds Per Game: \t" + trb + "\nAssists Per Game: \t" + apg);
+            Console.WriteLine("\nCarreer: \t" + "\nGames Played: \t\t" + cgames + "\nPoints Per Game: \t" + cppg + "\nRebounds Per Game: \t" + ctrb + "\nAssists Per Game: \t" + capg);
 
-            Console.WriteLine(priceList);
+            addRecords(playerName, ppg, trb, apg, cppg, ctrb, capg, surname + name + "_Stats.csv");
+            addHtml(playerName, ppg, trb, apg, cppg, ctrb, capg, surname + name + "_stats.html", dateOfBirth, team);
 
-            Thread.Sleep(500);
+            Console.ReadLine();
+            driver.Quit();
         }
 
     }

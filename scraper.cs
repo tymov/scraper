@@ -116,7 +116,7 @@ namespace WebScraping
         public static void JobSite(string jobname)
         {
             // Open Site
-            IWebDriver driver = new ChromeDriver();
+            IWebDriver driver = new FirefoxDriver();
             int count = 1;
             List<Dictionary<string, string>> dataList = new List<Dictionary<string, string>>();
 
@@ -131,7 +131,10 @@ namespace WebScraping
             var searchBut = driver.FindElement(By.XPath("//*[@id=\"main-search-button\"]"));
             searchBut.Submit();
 
-            Thread.Sleep(30000);
+            Thread.Sleep(40000);
+
+            var cookies = driver.FindElement(By.XPath("//*[@id=\"body-ictjob\"]/div[2]/a"));
+            cookies.Click();
 
             var date = driver.FindElement(By.XPath("/html/body/section/div[1]/div/div[2]/div/div/form/div[2]/div/div/div[2]/section/div/div[1]/div[2]/div/div[2]/span[2]/a"));
             date.Click();
@@ -238,10 +241,7 @@ namespace WebScraping
         static void Basketball(string name, string surname)
         {
             IWebDriver driver = new FirefoxDriver();
-            int count = 0;
             driver.Manage().Window.Maximize();
-
-            List<string> dataList = new List<string>();
 
             string firstLet = surname.Substring(0, 1);
             string lastFirst = "";
@@ -294,6 +294,19 @@ namespace WebScraping
 
             addRecords(playerName, ppg, trb, apg, cppg, ctrb, capg, surname + name + "_Stats.csv");
             addHtml(playerName, ppg, trb, apg, cppg, ctrb, capg, surname + name + "_stats.html", dateOfBirth, team);
+
+            var jsonWriter = new StringBuilder();
+            jsonWriter.AppendLine("\"Name\":\"" + playerName + "\",");
+            jsonWriter.AppendLine("\"Team\":\"" + team + "\",");
+            jsonWriter.AppendLine("\"Season\":\"" + currentSeason + "\",");
+            jsonWriter.AppendLine("\"Points\":\"" + ppg + "\",");
+            jsonWriter.AppendLine("\"Rebounds\":\"" + trb + "\",");
+            jsonWriter.AppendLine("\"Assists\":\"" + apg + "\",");
+            jsonWriter.AppendLine("\"Carreer\":\"" + "\",");
+            jsonWriter.AppendLine("\"Points\":\"" + cppg + "\",");
+            jsonWriter.AppendLine("\"Rebounds\":\"" + ctrb + "\",");
+            jsonWriter.AppendLine("\"Assists\":\"" + capg + "\",");
+            File.WriteAllText("C:\\Users\\Tymo\\source\\repos\\Webscraper\\Webscraper\\bin\\Debug\\net6.0\\" + surname + name + "_stats.json", json.ToString());
 
             Console.ReadLine();
             driver.Quit();

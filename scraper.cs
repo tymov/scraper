@@ -2,7 +2,6 @@ using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 using System.Globalization;
-using CsvHelper;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
